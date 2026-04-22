@@ -111,7 +111,7 @@ fun HomeScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val items = listOf("\u4e3b\u9875", "\u8bbe\u7f6e")
+    val items = listOf("主页", "设置")
     val icons = listOf(
         MiuixIcons.Weeks,
         MiuixIcons.Settings
@@ -145,7 +145,7 @@ fun HomeScreen() {
                         title = if (selectedIndex == 0) {
                             "Hamix"
                         } else {
-                            "\u8bbe\u7f6e"
+                            "设置"
                         }
                     )
                 },
@@ -160,7 +160,7 @@ fun HomeScreen() {
                         ) {
                             Icon(
                                 imageVector = MiuixIcons.Heavy.Add,
-                                contentDescription = "\u65b0\u589e",
+                                contentDescription = "新增",
                                 tint = Color.White
                             )
                         }
@@ -276,11 +276,11 @@ fun HomeScreen() {
                     verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Text(
-                        text = "\u65b0\u589e",
+                            text = "新增",
                         fontSize = 22.sp
                     )
                     Text(
-                        text = "\u8fd9\u91cc\u53ef\u4ee5\u653e\u65b0\u589e\u8868\u5355\u6216\u5feb\u6377\u64cd\u4f5c\u3002",
+                            text = "这里可以放新增表单或快捷操作。",
                         color = Color.Gray
                     )
 
@@ -296,7 +296,7 @@ fun HomeScreen() {
                             contentAlignment = Alignment.Center
                         ) {
                             Text(
-                                text = "\u5173\u95ed",
+                                text = "关闭",
                                 color = Color.White
                             )
                         }
@@ -310,10 +310,10 @@ fun HomeScreen() {
 @Composable
 private fun MainPage() {
     val tabs = listOf(
-        "\u5168\u90e8",
-        "\u996e\u54c1",
-        "\u9910\u98df",
-        "\u5feb\u9012"
+        "全部",
+        "饮品",
+        "餐食",
+        "快递"
     )
     var selectedTabIndex by remember { mutableStateOf(0) }
 
@@ -354,12 +354,12 @@ private fun MainSettingsPage(
             shape = RoundedCornerShape(16.dp)
         ) {
             ArrowPreference(
-                title = "\u5916\u89c2\u8bbe\u7f6e",
-                summary = "\u754c\u9762\u5916\u89c2\u9ad8\u7ea7\u8bbe\u7f6e",
+                title = "外观设置",
+                summary = "界面外观高级设置",
                 startAction = {
                     Icon(
                         imageVector = MiuixIcons.Theme,
-                        contentDescription = "\u5916\u89c2\u8bbe\u7f6e",
+                        contentDescription = "外观设置",
                         tint = MiuixTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .padding(end = 6.dp)
@@ -376,11 +376,11 @@ private fun MainSettingsPage(
             shape = RoundedCornerShape(16.dp)
         ) {
             ArrowPreference(
-                title = "\u5173\u4e8e",
+                title = "关于",
                 startAction = {
                     Icon(
                         imageVector = MiuixIcons.File,
-                        contentDescription = "\u5173\u4e8e",
+                        contentDescription = "关于",
                         tint = MiuixTheme.colorScheme.onBackground,
                         modifier = Modifier
                             .padding(end = 6.dp)

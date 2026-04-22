@@ -73,7 +73,7 @@ fun AboutPage(onBack: () -> Unit) {
                 .padding(horizontal = 20.dp)
         ) {
             Text(
-                text = "\u2190",
+                text = "←",
                 fontSize = 28.sp,
                 color = Color.Black,
                 modifier = Modifier
@@ -89,7 +89,7 @@ fun AboutPage(onBack: () -> Unit) {
             ) {
                 Image(
                     painter = painterResource(R.mipmap.ic_launcher_foreground),
-                    contentDescription = "\u5e94\u7528\u56fe\u6807",
+                    contentDescription = "应用图标",
                     modifier = Modifier.size(120.dp)
                 )
 
@@ -121,15 +121,15 @@ fun AboutPage(onBack: () -> Unit) {
             ) {
                 Column {
                     ArrowPreference(
-                        title = "\u5728 GitHub \u67e5\u770b\u6e90\u7801",
+                        title = "在 GitHub 查看源码",
                         onClick = { openUrl("https://github.com/your-repo") }
                     )
                     ArrowPreference(
-                        title = "\u52a0\u5165\u6211\u4eec\u7684 Telegram \u9891\u9053",
+                        title = "加入我们的 Telegram 频道",
                         onClick = { openUrl("https://t.me/your-channel") }
                     )
                     ArrowPreference(
-                        title = "\u52a0\u5165\u6211\u4eec\u7684 QQ \u9891\u9053",
+                        title = "加入我们的 QQ 频道",
                         onClick = { openUrl("https://qm.qq.com/your-channel") }
                     )
                 }

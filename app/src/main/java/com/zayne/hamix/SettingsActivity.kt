@@ -74,7 +74,7 @@ fun AppearanceSettingsPage(
     onBack: () -> Unit
 ) {
     Scaffold(
-        topBar = { TopAppBar(title = "\u5916\u89c2\u8bbe\u7f6e") }
+        topBar = { TopAppBar(title = "外观设置") }
     ) { innerPadding ->
         Column(
             modifier = Modifier
@@ -84,18 +84,18 @@ fun AppearanceSettingsPage(
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
             Text(
-                text = "\u8fd4\u56de",
+                text = "返回",
                 modifier = Modifier.clickable { onBack() }
             )
 
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 SwitchPreference(
-                    title = "\u60ac\u6d6e\u5e95\u680f",
-                    summary = "\u4f7f\u7528 Apple \u98ce\u683c\u7684\u60ac\u6d6e\u5e95\u680f",
+                    title = "悬浮底栏",
+                    summary = "使用 Apple 风格的悬浮底栏",
                     startAction = {
                         Icon(
                             imageVector = MiuixIcons.Rename,
-                            contentDescription = "\u60ac\u6d6e\u5e95\u680f",
+                            contentDescription = "悬浮底栏",
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     },
@@ -104,12 +104,12 @@ fun AppearanceSettingsPage(
                 )
 
                 SwitchPreference(
-                    title = "\u6db2\u6001\u73bb\u7483",
-                    summary = "\u542f\u7528\u60ac\u6d6e\u5e95\u680f\u7684\u6db2\u6001\u73bb\u7483\u6548\u679c",
+                    title = "液态玻璃",
+                    summary = "启用悬浮底栏的液态玻璃效果",
                     startAction = {
                         Icon(
                             imageVector = MiuixIcons.Album,
-                            contentDescription = "\u6db2\u6001\u73bb\u7483",
+                            contentDescription = "液态玻璃",
                             tint = MiuixTheme.colorScheme.onBackground
                         )
                     },
