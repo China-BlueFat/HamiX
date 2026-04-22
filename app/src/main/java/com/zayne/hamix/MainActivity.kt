@@ -7,15 +7,6 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.scaleIn
-import androidx.compose.animation.scaleOut
-import androidx.compose.animation.core.tween
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -35,7 +26,6 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -90,14 +80,9 @@ fun HomeScreen() {
     var enableFloatingBottomBarBlur by rememberSaveable {
         mutableStateOf(AppSettings.isGlassEffectEnabled(context))
     }
-    var showAddPanel by rememberSaveable { mutableStateOf(false) }
 
-    BackHandler(enabled = showAddPanel || selectedIndex != 0) {
-        if (showAddPanel) {
-            showAddPanel = false
-        } else {
-            selectedIndex = 0
-        }
+    BackHandler(enabled = selectedIndex != 0) {
+        selectedIndex = 0
     }
 
     DisposableEffect(lifecycleOwner, context) {
@@ -131,176 +116,95 @@ fun HomeScreen() {
         drawContent()
     }
 
-    Box(
-        modifier = Modifier.fillMaxSize()
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .blur(if (showAddPanel) 2.dp else 0.dp)
-        ) {
-            Scaffold(
-                topBar = {
-                    TopAppBar(
-                        title = if (selectedIndex == 0) {
-                            "Hamix"
-                        } else {
-                            "设置"
-                        }
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = if (selectedIndex == 0) {
+                    "Hamix"
+                } else {
+                    "设置"
+                }
+            )
+        },
+        floatingActionButton = {
+            if (selectedIndex == 0) {
+                FloatingActionButton(
+                    modifier = Modifier.padding(end = 32.dp, bottom = 46.dp),
+                    onClick = { },
+                    containerColor = Color(0xFF3482FF),
+                    minWidth = 56.dp,
+                    minHeight = 56.dp
+                ) {
+                    Icon(
+                        imageVector = MiuixIcons.Heavy.Add,
+                        contentDescription = "新增",
+                        tint = Color.White
                     )
-                },
-                floatingActionButton = {
-                    if (selectedIndex == 0) {
-                        FloatingActionButton(
-                            modifier = Modifier.padding(end = 32.dp, bottom = 46.dp),
-                            onClick = { showAddPanel = true },
-                            containerColor = Color(0xFF3482FF),
-                            minWidth = 56.dp,
-                            minHeight = 56.dp
-                        ) {
-                            Icon(
-                                imageVector = MiuixIcons.Heavy.Add,
-                                contentDescription = "新增",
-                                tint = Color.White
-                            )
-                        }
-                    }
-                },
-                bottomBar = {
-                    if (enableFloatingBottomBar) {
-                        Box(Modifier.fillMaxWidth()) {
-                            FloatingBottomBar(
-                                modifier = Modifier
-                                    .align(Alignment.BottomCenter)
-                                    .navigationBarsPadding()
-                                    .padding(bottom = 12.dp),
-                                selectedIndex = { selectedIndex },
-                                onSelected = { index -> selectedIndex = index },
-                                backdrop = backdrop,
-                                tabsCount = items.size,
-                                isBlurEnabled = enableFloatingBottomBarBlur && Build.VERSION.SDK_INT >= 33
+                }
+            }
+        },
+        bottomBar = {
+            if (enableFloatingBottomBar) {
+                Box(Modifier.fillMaxWidth()) {
+                    FloatingBottomBar(
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .navigationBarsPadding()
+                            .padding(bottom = 12.dp),
+                        selectedIndex = { selectedIndex },
+                        onSelected = { index -> selectedIndex = index },
+                        backdrop = backdrop,
+                        tabsCount = items.size,
+                        isBlurEnabled = enableFloatingBottomBarBlur && Build.VERSION.SDK_INT >= 33
+                    ) {
+                        items.forEachIndexed { index, label ->
+                            FloatingBottomBarItem(
+                                onClick = { selectedIndex = index },
+                                modifier = Modifier.defaultMinSize(minWidth = 76.dp)
                             ) {
-                                items.forEachIndexed { index, label ->
-                                    FloatingBottomBarItem(
-                                        onClick = { selectedIndex = index },
-                                        modifier = Modifier.defaultMinSize(minWidth = 76.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = icons[index],
-                                            contentDescription = label,
-                                            tint = MiuixTheme.colorScheme.onSurface
-                                        )
-                                        Text(text = label, fontSize = 11.sp, lineHeight = 14.sp)
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        NavigationBar {
-                            items.forEachIndexed { index, label ->
-                                NavigationBarItem(
-                                    modifier = Modifier.weight(1f),
-                                    icon = icons[index],
-                                    label = label,
-                                    selected = selectedIndex == index,
-                                    onClick = { selectedIndex = index }
+                                Icon(
+                                    imageVector = icons[index],
+                                    contentDescription = label,
+                                    tint = MiuixTheme.colorScheme.onSurface
                                 )
+                                Text(text = label, fontSize = 11.sp, lineHeight = 14.sp)
                             }
                         }
                     }
                 }
-            ) { innerPadding ->
-                Box(
-                    modifier = Modifier
-                        .padding(innerPadding)
-                        .fillMaxSize()
-                        .layerBackdrop(backdrop)
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(12.dp)
-                    ) {
-                        when (selectedIndex) {
-                            0 -> MainPage()
-                            1 -> MainSettingsPage(
-                                onOpenAppearanceSettings = { openSettingsPage() },
-                                onOpenAboutPage = { openAboutPage() }
-                            )
-                        }
+            } else {
+                NavigationBar {
+                    items.forEachIndexed { index, label ->
+                        NavigationBarItem(
+                            modifier = Modifier.weight(1f),
+                            icon = icons[index],
+                            label = label,
+                            selected = selectedIndex == index,
+                            onClick = { selectedIndex = index }
+                        )
                     }
                 }
             }
         }
-
-        AnimatedVisibility(
-            visible = showAddPanel,
-            enter = fadeIn(animationSpec = tween(180)),
-            exit = fadeOut(animationSpec = tween(140)),
-            modifier = Modifier.fillMaxSize()
+    ) { innerPadding ->
+        Box(
+            modifier = Modifier
+                .padding(innerPadding)
+                .fillMaxSize()
+                .layerBackdrop(backdrop)
         ) {
-            Box(
+            Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(Color.Black.copy(alpha = 0.08f))
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null
-                    ) {
-                        showAddPanel = false
-                    }
-            )
-        }
-
-        AnimatedVisibility(
-            visible = showAddPanel,
-            enter = fadeIn(animationSpec = tween(220)) + scaleIn(
-                initialScale = 0.92f,
-                animationSpec = tween(220)
-            ),
-            exit = fadeOut(animationSpec = tween(140)) + scaleOut(
-                targetScale = 0.95f,
-                animationSpec = tween(140)
-            ),
-            modifier = Modifier
-                .align(Alignment.Center)
-                .fillMaxWidth(0.86f)
-        ) {
-            Surface(
-                shape = RoundedCornerShape(28.dp),
-                color = MiuixTheme.colorScheme.surface
+                    .padding(16.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Column(
-                    modifier = Modifier.padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    Text(
-                            text = "新增",
-                        fontSize = 22.sp
+                when (selectedIndex) {
+                    0 -> MainPage()
+                    1 -> MainSettingsPage(
+                        onOpenAppearanceSettings = { openSettingsPage() },
+                        onOpenAboutPage = { openAboutPage() }
                     )
-                    Text(
-                            text = "这里可以放新增表单或快捷操作。",
-                        color = Color.Gray
-                    )
-
-                    Surface(
-                        onClick = { showAddPanel = false },
-                        shape = RoundedCornerShape(16.dp),
-                        color = Color(0xFF3482FF)
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(vertical = 14.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = "关闭",
-                                color = Color.White
-                            )
-                        }
-                    }
                 }
             }
         }
