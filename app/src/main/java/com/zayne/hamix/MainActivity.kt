@@ -1,4 +1,8 @@
 package com.zayne.hamix
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 
 import android.content.Intent
 import android.os.Build
@@ -10,12 +14,15 @@ import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -37,8 +44,11 @@ import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.zayne.hamix.ui.component.FloatingBottomBar
 import com.zayne.hamix.ui.component.FloatingBottomBarItem
+import top.yukonga.miuix.kmp.basic.Button
+import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
 import top.yukonga.miuix.kmp.basic.Icon
+import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
@@ -46,15 +56,26 @@ import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
 import top.yukonga.miuix.kmp.basic.Text
+import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
+import top.yukonga.miuix.kmp.icon.extended.AddCircle
 import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.Image
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Theme
 import top.yukonga.miuix.kmp.icon.extended.Weeks
 import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
+import top.yukonga.miuix.kmp.window.WindowBottomSheet
+
+private val homeTabs = listOf(
+    "全部",
+    "饮品",
+    "餐食",
+    "快递"
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +91,26 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HomeScreen() {
+
+    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            selectedImageUri = uri
+        }
+    }
+    val buttonColors = ButtonDefaults.buttonColors(
+        color = Color(0xFFF2F2F2),
+        contentColor = Color(0xFF222222),
+        disabledColor = Color(0XFF3482FF),
+        disabledContentColor = Color.White
+    )
+    var text by remember { mutableStateOf("") }
+    var showCreateSheet by rememberSaveable { mutableStateOf(false) }
+    var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
+
+
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -130,7 +171,7 @@ fun HomeScreen() {
             if (selectedIndex == 0) {
                 FloatingActionButton(
                     modifier = Modifier.padding(end = 32.dp, bottom = 46.dp),
-                    onClick = { },
+                    onClick = { showCreateSheet = true },
                     containerColor = Color(0xFF3482FF),
                     minWidth = 56.dp,
                     minHeight = 56.dp
@@ -209,16 +250,90 @@ fun HomeScreen() {
             }
         }
     }
+    WindowBottomSheet(
+        show = showCreateSheet,
+        title = "添加待取",
+        onDismissRequest = { showCreateSheet = false }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            TextField(
+                value = text,
+                onValueChange = { text = it },
+                label = "输入取餐码/取件码",
+                trailingIcon = {
+                    IconButton(
+                        modifier = Modifier.padding(end = 12.dp),
+                        onClick = {
+                            pickImageLauncher.launch(
+                                PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly)
+                            )
+                        },
+                        backgroundColor = Color.Transparent,
+                        minWidth = 32.dp,
+                        minHeight = 32.dp
+                    ) {
+                        Icon(
+                            imageVector = MiuixIcons.Heavy.AddCircle, // 这里换成你真正想要的图标
+                            contentDescription = "操作"
+                        )
+                    }
+                }
+            )
+            Text("类别")
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                homeTabs.drop(1).forEach { category ->
+                    val isSelected = selectedCategory == category
+
+                    Button(
+                        onClick = {
+                            selectedCategory = category
+                        },
+                        enabled = !isSelected,
+                        colors = buttonColors,
+                        modifier = Modifier.height(36.dp)
+                            .width(68.dp),
+                        cornerRadius = 999.dp,
+                        insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    ) {
+                        Text(category)
+                    }
+                }
+            }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* 处理点击事件 */ },
+                    colors = ButtonDefaults.buttonColors()
+                ) {
+                    Text("取消")
+                }
+
+                Button(
+                    modifier = Modifier.weight(1f),
+                    onClick = { /* 处理点击事件 */ },
+                    colors = ButtonDefaults.buttonColorsPrimary()
+                ) {
+                    Text("保存")
+                }
+            }
+
+        }
+    }
+
 }
 
 @Composable
 private fun MainPage() {
-    val tabs = listOf(
-        "全部",
-        "饮品",
-        "餐食",
-        "快递"
-    )
     var selectedTabIndex by remember { mutableStateOf(0) }
 
     Box(
@@ -231,7 +346,7 @@ private fun MainPage() {
         ) {
             TabRowWithContour(
                 modifier = Modifier.fillMaxWidth(),
-                tabs = tabs,
+                tabs = homeTabs,
                 maxWidth = 2.dp,
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = { selectedTabIndex = it },
@@ -245,6 +360,7 @@ private fun MainPage() {
         }
     }
 }
+
 
 @Composable
 private fun MainSettingsPage(
