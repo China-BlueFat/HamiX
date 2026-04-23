@@ -96,14 +96,14 @@ fun AboutPage(onBack: () -> Unit) {
                 Spacer(modifier = Modifier.height(20.dp))
 
                 Text(
-                    text = "Hamix",
+                    text = "哈米记 Hamix",
                     fontSize = 30.sp
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
 
                 Text(
-                    text = "$versionName ($versionCode)",
+                    text = "版本：$versionName ($versionCode)",
                     color = Color.Gray,
                     fontSize = 14.sp
                 )

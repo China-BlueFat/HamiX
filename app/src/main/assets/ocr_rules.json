@@ -1,0 +1,23 @@
+[
+  {
+    "name": "规则1",
+    "category": "饮品",
+    "brand": "蜜雪冰城",
+    "extractType": "regex",
+    "extractRegex": "凭取餐码自提：[\\s\\n\\r]*?(\\d+)"
+  },
+  {
+    "name": "规则2",
+    "category": "饮品",
+    "brand": "瑞幸咖啡",
+    "extractType": "regex",
+    "extractRegex": "(?:商品名称|取餐码)：[\\s\\n\\r]*?(\\d+)"
+  },
+  {
+    "name": "规则3",
+    "category": "餐食",
+    "brand": "古花",
+    "extractType": "previous_line",
+    "matchText": "取茶号"
+  }
+]

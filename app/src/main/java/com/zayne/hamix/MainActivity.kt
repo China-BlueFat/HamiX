@@ -1,21 +1,27 @@
 package com.zayne.hamix
+import android.R.attr.fontWeight
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.ui.unit.sp
 
 import android.content.Intent
+import android.graphics.ImageDecoder
 import android.os.Build
 import android.os.Bundle
+import android.provider.MediaStore
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -23,18 +29,25 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.lifecycle.Lifecycle
@@ -75,6 +88,19 @@ import top.yukonga.miuix.kmp.preference.ArrowPreference
 import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
+import top.yukonga.miuix.kmp.basic.TextButton
+import java.util.Calendar
+import java.text.SimpleDateFormat
+import java.util.Locale
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
+import androidx.compose.runtime.CompositionLocalProvider
 
 private val homeTabs = listOf(
     "全部",
@@ -86,6 +112,11 @@ private val homeTabs = listOf(
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        lifecycleScope.launch {
+            PaddleOcrHelper.getInstance(applicationContext).initAsync()
+        }
+
         enableEdgeToEdge()
         setContent {
             MiuixTheme {
@@ -97,35 +128,64 @@ class MainActivity : ComponentActivity() {
 
 @Composable
 fun HomeScreen() {
-
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
-    val pickImageLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.PickVisualMedia()
-    ) { uri ->
-        if (uri != null) {
-            selectedImageUri = uri
-        }
-    }
+    val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+    val scope = rememberCoroutineScope()
     val buttonColors = ButtonDefaults.buttonColors(
         color = Color(0xFFF2F2F2),
         contentColor = Color(0xFF222222),
         disabledColor = Color(0XFF3482FF),
         disabledContentColor = Color.White
     )
-    var text by remember { mutableStateOf("") }
+    var text by rememberSaveable { mutableStateOf("") }
+    var summary by rememberSaveable { mutableStateOf("") }
+    var ocrLogText by rememberSaveable { mutableStateOf("") }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
-
-
-    val context = LocalContext.current
-    val lifecycleOwner = LocalLifecycleOwner.current
-
     var selectedIndex by rememberSaveable { mutableStateOf(0) }
     var enableFloatingBottomBar by rememberSaveable {
         mutableStateOf(AppSettings.isFloatingBottomBarEnabled(context))
     }
     var enableFloatingBottomBarBlur by rememberSaveable {
         mutableStateOf(AppSettings.isGlassEffectEnabled(context))
+    }
+    var hamiItems by remember { mutableStateOf(AppSettings.getHamiItems(context)) }
+
+    // 当 hamiItems 改变时自动保存
+    LaunchedEffect(hamiItems) {
+        AppSettings.saveHamiItems(context, hamiItems)
+    }
+
+    val pickImageLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickVisualMedia()
+    ) { uri ->
+        if (uri != null) {
+            scope.launch {
+                try {
+                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                        ImageDecoder.decodeBitmap(
+                            ImageDecoder.createSource(context.contentResolver, uri)
+                        )
+                    } else {
+                        @Suppress("DEPRECATION")
+                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+                    }
+
+                    val helper = TextRecognitionHelper(context)
+                    val result = helper.recognizeAll(bitmap)
+                    text = result.code ?: ""
+                    selectedCategory = result.type
+                    summary = result.brand ?: ""
+                    ocrLogText = result.fullText
+
+                    if (!bitmap.isRecycled) {
+                        bitmap.recycle()
+                    }
+                } catch (e: Exception) {
+                    e.printStackTrace()
+                }
+            }
+        }
     }
 
     BackHandler(enabled = selectedIndex != 0) {
@@ -143,10 +203,11 @@ fun HomeScreen() {
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val items = listOf("主页", "设置")
-    val icons = listOf(
+    val navItems = listOf("主页", "设置", "日志")
+    val navIcons = listOf(
         MiuixIcons.Weeks,
-        MiuixIcons.Settings
+        MiuixIcons.Settings,
+        MiuixIcons.File
     )
 
     fun openAppearanceSettingsPage() {
@@ -205,16 +266,16 @@ fun HomeScreen() {
                         selectedIndex = { selectedIndex },
                         onSelected = { index -> selectedIndex = index },
                         backdrop = backdrop,
-                        tabsCount = items.size,
+                        tabsCount = navItems.size,
                         isBlurEnabled = enableFloatingBottomBarBlur && Build.VERSION.SDK_INT >= 33
                     ) {
-                        items.forEachIndexed { index, label ->
+                        navItems.forEachIndexed { index, label ->
                             FloatingBottomBarItem(
                                 onClick = { selectedIndex = index },
                                 modifier = Modifier.defaultMinSize(minWidth = 76.dp)
                             ) {
                                 Icon(
-                                    imageVector = icons[index],
+                                    imageVector = navIcons[index],
                                     contentDescription = label,
                                     tint = MiuixTheme.colorScheme.onSurface
                                 )
@@ -225,10 +286,10 @@ fun HomeScreen() {
                 }
             } else {
                 NavigationBar {
-                    items.forEachIndexed { index, label ->
+                    navItems.forEachIndexed { index, label ->
                         NavigationBarItem(
                             modifier = Modifier.weight(1f),
-                            icon = icons[index],
+                            icon = navIcons[index],
                             label = label,
                             selected = selectedIndex == index,
                             onClick = { selectedIndex = index }
@@ -251,20 +312,31 @@ fun HomeScreen() {
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 when (selectedIndex) {
-                    0 -> MainPage()
+                    0 -> MainPage(
+                        items = hamiItems,
+                        onDone = { item -> hamiItems = hamiItems - item }
+                    )
                     1 -> MainSettingsPage(
                         onOpenAppearanceSettings = { openAppearanceSettingsPage() },
                         onOpenFeatureSettings = { openFeatureSettingsPage() },
                         onOpenAboutPage = { openAboutPage() }
                     )
+                    2 -> OcrLogPage(ocrLogText)
                 }
             }
         }
     }
+    fun resetCreateSheet() {
+        showCreateSheet = false
+        text = ""
+        summary = ""
+        selectedCategory = null
+    }
+
     WindowBottomSheet(
         show = showCreateSheet,
         title = "添加待取",
-        onDismissRequest = { showCreateSheet = false }
+        onDismissRequest = { resetCreateSheet() }
     ) {
         Column(
             modifier = Modifier
@@ -312,7 +384,7 @@ fun HomeScreen() {
                             enabled = !isSelected,
                             colors = buttonColors,
                             modifier = Modifier.height(36.dp)
-                                .width(68.dp),
+                                .width(58.dp),
                             cornerRadius = 999.dp,
                             insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
                         ) {
@@ -335,15 +407,29 @@ fun HomeScreen() {
             ) {
                 Button(
                     modifier = Modifier.weight(1f),
-                    onClick = { /* 处理点击事件 */ },
+                    onClick = { resetCreateSheet() },
                     colors = ButtonDefaults.buttonColors()
                 ) {
                     Text("取消")
                 }
 
+
                 Button(
                     modifier = Modifier.weight(1f),
-                    onClick = { /* 处理点击事件 */ },
+                    onClick = {
+                        if (text.isNotBlank()) {
+                            val sdf = SimpleDateFormat("M月d日", Locale.getDefault())
+                            val currentDate = sdf.format(Calendar.getInstance().time)
+                            val newItem = HamiItem(
+                                code = text,
+                                category = selectedCategory ?: "其它",
+                                date = currentDate,
+                                summary = summary
+                            )
+                            hamiItems = hamiItems + newItem
+                            resetCreateSheet()
+                        }
+                    },
                     colors = ButtonDefaults.buttonColorsPrimary()
                 ) {
                     Text("保存")
@@ -356,16 +442,47 @@ fun HomeScreen() {
 }
 
 @Composable
-private fun MainPage() {
+private fun OcrLogPage(logText: String) {
+    val scrollState = rememberScrollState()
+
+    Surface(
+        modifier = Modifier.fillMaxSize(),
+        color = MiuixTheme.colorScheme.background,
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(16.dp)
+                .verticalScroll(scrollState),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = "OCR完整文本",
+                fontSize = 20.sp
+            )
+            Text(
+                text = if (logText.isBlank()) "暂无识别日志" else logText
+            )
+        }
+    }
+}
+
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
     var selectedTabIndex by remember { mutableStateOf(0) }
 
-    Box(
-        modifier = Modifier.fillMaxWidth(),
-        contentAlignment = Alignment.CenterStart
-    ) {
-        Box(
-            modifier = Modifier.fillMaxWidth(0.72f),
-            contentAlignment = Alignment.CenterStart
+    val filteredItems = if (selectedTabIndex == 0) {
+        items
+    } else {
+        items.filter { it.category == homeTabs[selectedTabIndex] }
+    }
+
+    Column (
+    ) { Box(
+        modifier = Modifier.fillMaxWidth(0.72f)
+                            .padding(bottom = 22.dp)
         ) {
             TabRowWithContour(
                 modifier = Modifier.fillMaxWidth(),
@@ -380,6 +497,74 @@ private fun MainPage() {
                     selectedContentColor = Color.Black
                 )
             )
+        }
+        LazyColumn {
+            items(
+                items = filteredItems,
+                key = { it.id }
+            ) { item ->
+                val viewConfiguration = LocalViewConfiguration.current
+                val customViewConfiguration = remember(viewConfiguration) {
+                    object : ViewConfiguration by viewConfiguration {
+                        override val longPressTimeoutMillis: Long
+                            get() = 1000L
+                    }
+                }
+                CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
+                    Card(
+                        modifier = Modifier
+                            .padding(bottom = 12.dp)
+                            .animateItem(),
+                        showIndication = true,
+                        insideMargin = PaddingValues(16.dp),
+                        onClick = { /* 可以点击进入详情，暂时留空 */ },
+                        onLongPress = { onDone(item) }
+                    ) {
+                        Column() {
+                            Text(
+                                text = item.code,
+                                color = MiuixTheme.colorScheme.primary,
+                                fontSize = 20.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                style = MiuixTheme.textStyles.main
+                            )
+                            Spacer(modifier = Modifier.height(8.dp))
+                            Text(
+                                text = item.summary,
+                                style = MiuixTheme.textStyles.body2
+                            )
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    modifier = Modifier
+                                        .padding(top = 8.dp),
+                                    fontWeight = FontWeight.Light,
+                                    text = "${item.date}·${item.category}",
+                                    fontSize = 12.sp,
+                                    style = MiuixTheme.textStyles.subtitle
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Button(
+                                    modifier = Modifier
+                                        .width(56.dp)
+                                        .height(32.dp),
+                                    insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                    colors = ButtonDefaults.buttonColorsPrimary(),
+                                    onClick = { onDone(item) }
+                                ) {
+                                    Text(
+                                        text = "完成",
+                                        fontSize = 14.sp
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }
