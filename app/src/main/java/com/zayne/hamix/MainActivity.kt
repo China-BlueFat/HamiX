@@ -46,12 +46,15 @@ import com.zayne.hamix.ui.component.FloatingBottomBar
 import com.zayne.hamix.ui.component.FloatingBottomBarItem
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
+import top.yukonga.miuix.kmp.basic.Card
 import top.yukonga.miuix.kmp.basic.FloatingActionButton
+import top.yukonga.miuix.kmp.basic.HorizontalDivider
 import top.yukonga.miuix.kmp.basic.Icon
 import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.NavigationBar
 import top.yukonga.miuix.kmp.basic.NavigationBarItem
 import top.yukonga.miuix.kmp.basic.Scaffold
+import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Surface
 import top.yukonga.miuix.kmp.basic.TabRowDefaults
 import top.yukonga.miuix.kmp.basic.TabRowWithContour
@@ -61,12 +64,15 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.AddCircle
+import top.yukonga.miuix.kmp.icon.extended.All
 import top.yukonga.miuix.kmp.icon.extended.File
+import top.yukonga.miuix.kmp.icon.extended.GridView
 import top.yukonga.miuix.kmp.icon.extended.Image
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Theme
 import top.yukonga.miuix.kmp.icon.extended.Weeks
 import top.yukonga.miuix.kmp.preference.ArrowPreference
+import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
 
@@ -143,8 +149,12 @@ fun HomeScreen() {
         MiuixIcons.Settings
     )
 
-    fun openSettingsPage() {
-        context.startActivity(Intent(context, SettingsActivity::class.java))
+    fun openAppearanceSettingsPage() {
+        context.startActivity(Intent(context, AppearanceSettingsActivity::class.java))
+    }
+
+    fun openFeatureSettingsPage() {
+        context.startActivity(Intent(context, FeatureSettingsActivity::class.java))
     }
 
     fun openAboutPage() {
@@ -243,7 +253,8 @@ fun HomeScreen() {
                 when (selectedIndex) {
                     0 -> MainPage()
                     1 -> MainSettingsPage(
-                        onOpenAppearanceSettings = { openSettingsPage() },
+                        onOpenAppearanceSettings = { openAppearanceSettingsPage() },
+                        onOpenFeatureSettings = { openFeatureSettingsPage() },
                         onOpenAboutPage = { openAboutPage() }
                     )
                 }
@@ -284,27 +295,39 @@ fun HomeScreen() {
                     }
                 }
             )
-            Text("类别")
-            Row(
-                horizontalArrangement = Arrangement.spacedBy(8.dp)
-            ) {
-                homeTabs.drop(1).forEach { category ->
-                    val isSelected = selectedCategory == category
+            Column {
+                SmallTitle(insideMargin = PaddingValues(3.dp, 8.dp),text = "类别")
 
-                    Button(
-                        onClick = {
-                            selectedCategory = category
-                        },
-                        enabled = !isSelected,
-                        colors = buttonColors,
-                        modifier = Modifier.height(36.dp)
-                            .width(68.dp),
-                        cornerRadius = 999.dp,
-                        insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
-                    ) {
-                        Text(category)
+                Row(
+                    modifier = Modifier.padding(horizontal = 0.dp).padding(bottom = 16.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    homeTabs.drop(1).forEach { category ->
+                        val isSelected = selectedCategory == category
+
+                        Button(
+                            onClick = {
+                                selectedCategory = category
+                            },
+                            enabled = !isSelected,
+                            colors = buttonColors,
+                            modifier = Modifier.height(36.dp)
+                                .width(68.dp),
+                            cornerRadius = 999.dp,
+                            insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                        ) {
+                            Text(category)
+                        }
                     }
                 }
+                HorizontalDivider(
+                    modifier = Modifier.padding(
+                        top = 0.dp,
+                        bottom = 12.dp,
+                        start = 2.dp,
+                        end = 2.dp
+                    )
+                )
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -365,6 +388,7 @@ private fun MainPage() {
 @Composable
 private fun MainSettingsPage(
     onOpenAppearanceSettings: () -> Unit,
+    onOpenFeatureSettings: () -> Unit,
     onOpenAboutPage: () -> Unit
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -387,6 +411,27 @@ private fun MainSettingsPage(
                     )
                 },
                 onClick = onOpenAppearanceSettings
+            )
+        }
+        Surface(
+            modifier = Modifier.height(72.dp),
+            color = MiuixTheme.colorScheme.background,
+            shape = RoundedCornerShape(16.dp)
+        ) {
+            ArrowPreference(
+                title = "功能设置",
+                summary = "自定义识别方式",
+                startAction = {
+                    Icon(
+                        imageVector = MiuixIcons.GridView,
+                        contentDescription = "功能设置",
+                        tint = MiuixTheme.colorScheme.onBackground,
+                        modifier = Modifier
+                            .padding(end = 6.dp)
+                            .height(80.dp)
+                    )
+                },
+                onClick = onOpenFeatureSettings
             )
         }
 

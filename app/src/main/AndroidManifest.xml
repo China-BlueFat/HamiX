@@ -12,7 +12,10 @@
         android:supportsRtl="true"
         android:theme="@style/Theme.哈米记">
         <activity
-            android:name=".SettingsActivity"
+            android:name=".FeatureSettingsActivity"
+            android:exported="false" />
+        <activity
+            android:name=".AppearanceSettingsActivity"
             android:exported="false" />
         <activity
             android:name=".MainActivity"
