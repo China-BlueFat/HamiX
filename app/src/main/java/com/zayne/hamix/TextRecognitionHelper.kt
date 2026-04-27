@@ -9,11 +9,13 @@ import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.Dispatchers
 import org.json.JSONArray
+import java.io.File
 
 data class OcrRule(
-    val name: String,
-    val category: String,
     val brand: String,
+    val category: String,
+    val matchBrand: String,
+    val logoName: String? = null,
     val extractType: String,
     val extractRegex: String? = null,
     val matchText: String? = null
@@ -42,20 +44,48 @@ class TextRecognitionHelper(private val context: Context) {
         return paddleOcr.init()
     }
 
+    private fun getExternalRulesFile(): File? {
+        val directory = context.getExternalFilesDir("config") ?: return null
+        if (!directory.exists()) {
+            directory.mkdirs()
+        }
+        return File(directory, "ocr_rules.json")
+    }
+
+    private fun ensureExternalRulesFile(): File? {
+        val rulesFile = getExternalRulesFile() ?: return null
+        if (!rulesFile.exists()) {
+            runCatching {
+                context.assets.open("ocr_rules.json").use { input ->
+                    rulesFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+            }.onFailure { e ->
+                Log.e("RecognitionMonitor", "解压 OCR 规则文件失败: ${e.message}", e)
+            }
+        }
+        return rulesFile
+    }
+
     private fun loadOcrRules(): List<OcrRule> {
         return try {
-            val jsonText = context.assets.open("ocr_rules.json")
-                .bufferedReader()
-                .use { it.readText() }
+            val jsonText = ensureExternalRulesFile()
+                ?.takeIf { it.exists() }
+                ?.readText(Charsets.UTF_8)
+                ?: context.assets.open("ocr_rules.json")
+                    .bufferedReader()
+                    .use { it.readText() }
             val jsonArray = JSONArray(jsonText)
             buildList {
                 for (index in 0 until jsonArray.length()) {
                     val item = jsonArray.getJSONObject(index)
                     add(
                         OcrRule(
-                            name = item.optString("name"),
-                            category = item.optString("category"),
                             brand = item.optString("brand"),
+                            category = item.optString("category"),
+                            matchBrand = item.optString("matchBrand"),
+                            logoName = item.optString("logoName").takeIf { it.isNotBlank() },
                             extractType = item.optString("extractType"),
                             extractRegex = item.optString("extractRegex").takeIf { it.isNotBlank() },
                             matchText = item.optString("matchText").takeIf { it.isNotBlank() }
@@ -71,7 +101,7 @@ class TextRecognitionHelper(private val context: Context) {
 
     private fun extractCodeByJsonRules(mergedText: String, rawFullText: String): RecognitionResult? {
         for (rule in ocrRules) {
-            if (rule.brand.isNotBlank() && !mergedText.contains(rule.brand)) continue
+            if (rule.matchBrand.isNotBlank() && !mergedText.contains(rule.matchBrand)) continue
 
             val code = when (rule.extractType) {
                 "previous_line" -> extractPreviousLine(rawFullText, rule.matchText)
@@ -79,14 +109,15 @@ class TextRecognitionHelper(private val context: Context) {
             }
             if (code.isBlank()) continue
 
-            Log.d("RecognitionMonitor", "命中 JSON 规则: ${rule.name}, code=$code")
+            Log.d("RecognitionMonitor", "命中 JSON 规则: ${rule.brand}, code=$code")
             return RecognitionResult(
                 code = code,
                 qr = null,
                 type = rule.category,
                 brand = rule.brand.ifBlank { null },
                 fullText = rawFullText,
-                pickupLocation = null
+                pickupLocation = null,
+                logoName = rule.logoName
             )
         }
         return null
@@ -1035,7 +1066,15 @@ class TextRecognitionHelper(private val context: Context) {
     }
 }
 
-data class RecognitionResult(val code: String?, val qr: String?, val type: String, val brand: String?, val fullText: String, val pickupLocation: String? = null)
+data class RecognitionResult(
+    val code: String?,
+    val qr: String?,
+    val type: String,
+    val brand: String?,
+    val fullText: String,
+    val pickupLocation: String? = null,
+    val logoName: String? = null
+)
 
 /**
  * 多取件码识别结果

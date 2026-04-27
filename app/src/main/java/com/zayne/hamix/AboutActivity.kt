@@ -1,4 +1,4 @@
-package com.zayne.hamix
+﻿package com.zayne.hamix
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -81,23 +81,25 @@ fun AboutPage(onBack: () -> Unit) {
                     .clickable { onBack() }
             )
 
-            Spacer(modifier = Modifier.height(96.dp))
+            Spacer(modifier = Modifier.height(26.dp))
 
             Column(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.CenterHorizontally
             ) {
                 Image(
-                    painter = painterResource(R.mipmap.ic_launcher_foreground),
+                    painter = painterResource(R.drawable.logo),
                     contentDescription = "应用图标",
-                    modifier = Modifier.size(120.dp)
+                    modifier = Modifier.size(320.dp)
                 )
 
-                Spacer(modifier = Modifier.height(20.dp))
-
                 Text(
-                    text = "哈米记 Hamix",
+                    text = "哈米记",
                     fontSize = 30.sp
+                )
+                Text(
+                    text = "Hamix",
+                    fontSize = 18.sp
                 )
 
                 Spacer(modifier = Modifier.height(8.dp))
@@ -122,16 +124,16 @@ fun AboutPage(onBack: () -> Unit) {
                 Column {
                     ArrowPreference(
                         title = "在 GitHub 查看源码",
-                        onClick = { openUrl("https://github.com/your-repo") }
+                        onClick = { openUrl("https://github.com/China-BlueFat/HamiX") }
                     )
-                    ArrowPreference(
-                        title = "加入我们的 Telegram 频道",
-                        onClick = { openUrl("https://t.me/your-channel") }
-                    )
-                    ArrowPreference(
-                        title = "加入我们的 QQ 频道",
-                        onClick = { openUrl("https://qm.qq.com/your-channel") }
-                    )
+//                    ArrowPreference(
+//                        title = "加入我的 Telegram 频道",
+//                        onClick = { openUrl("https://t.me/your-channel") }
+//                    )
+//                    ArrowPreference(
+//                        title = "加入我的 QQ 频道",
+//                        onClick = { openUrl("https://qm.qq.com/your-channel") }
+//                    )
                 }
             }
         }

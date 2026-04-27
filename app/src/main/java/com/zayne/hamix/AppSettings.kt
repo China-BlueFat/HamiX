@@ -1,4 +1,4 @@
-package com.zayne.hamix
+﻿package com.zayne.hamix
 
 import android.content.Context
 import org.json.JSONArray
@@ -27,6 +27,22 @@ object AppSettings {
         prefs(context).edit().putBoolean(KEY_GLASS_EFFECT, enabled).apply()
     }
 
+    fun saveHamiItems(context: Context, items: List<HamiItem>) {
+        val jsonArray = JSONArray()
+        items.forEach { item ->
+            val obj = JSONObject().apply {
+                put("id", item.id)
+                put("code", item.code)
+                put("category", item.category)
+                put("date", item.date)
+                put("summary", item.summary)
+                put("logoName", item.logoName ?: JSONObject.NULL)
+            }
+            jsonArray.put(obj)
+        }
+        prefs(context).edit().putString(KEY_HAMI_ITEMS, jsonArray.toString()).apply()
+    }
+
     fun getHamiItems(context: Context): List<HamiItem> {
         val jsonString = prefs(context).getString(KEY_HAMI_ITEMS, null) ?: return emptyList()
         return try {
@@ -38,26 +54,12 @@ object AppSettings {
                     code = obj.getString("code"),
                     category = obj.getString("category"),
                     date = obj.getString("date"),
-                    summary = obj.optString("summary", "摘要文本")
+                    summary = obj.optString("summary", "摘要文本"),
+                    logoName = obj.optString("logoName").takeIf { it.isNotBlank() && it != "null" }
                 )
             }
-        } catch (e: Exception) {
+        } catch (_: Exception) {
             emptyList()
         }
-    }
-
-    fun saveHamiItems(context: Context, items: List<HamiItem>) {
-        val jsonArray = JSONArray()
-        items.forEach { item ->
-            val obj = JSONObject().apply {
-                put("id", item.id)
-                put("code", item.code)
-                put("category", item.category)
-                put("date", item.date)
-                put("summary", item.summary)
-            }
-            jsonArray.put(obj)
-        }
-        prefs(context).edit().putString(KEY_HAMI_ITEMS, jsonArray.toString()).apply()
     }
 }

@@ -1,22 +1,25 @@
 [
   {
-    "name": "规则1",
-    "category": "饮品",
     "brand": "蜜雪冰城",
+    "category": "饮品",
+    "matchBrand": "蜜雪冰城",
+    "logoName": "MIXUE",
     "extractType": "regex",
     "extractRegex": "凭取餐码自提：[\\s\\n\\r]*?(\\d+)"
   },
   {
-    "name": "规则2",
-    "category": "饮品",
     "brand": "瑞幸咖啡",
+    "category": "饮品",
+    "matchBrand": "瑞幸咖啡",
+    "logoName": "Luckin Coffee",
     "extractType": "regex",
     "extractRegex": "(?:商品名称|取餐码)：[\\s\\n\\r]*?(\\d+)"
   },
   {
-    "name": "规则3",
+    "brand": "古茗",
     "category": "餐食",
-    "brand": "古花",
+    "matchBrand": "古花",
+    "logoName": "GoodMe",
     "extractType": "previous_line",
     "matchText": "取茶号"
   }

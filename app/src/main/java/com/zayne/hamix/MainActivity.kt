@@ -1,21 +1,28 @@
-package com.zayne.hamix
-import android.R.attr.fontWeight
-import android.net.Uri
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.ui.unit.sp
+﻿package com.zayne.hamix
 
+import android.Manifest
+import android.content.BroadcastReceiver
 import android.content.Intent
+import android.content.IntentFilter
+import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.MediaStore
+import android.app.NotificationManager
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.clickable
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.activity.result.contract.ActivityResultContracts.RequestPermission
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -28,13 +35,18 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,19 +56,26 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalViewConfiguration
+import androidx.compose.ui.platform.ViewConfiguration
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.lifecycleScope
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.zayne.hamix.ui.component.FloatingBottomBar
 import com.zayne.hamix.ui.component.FloatingBottomBarItem
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import top.yukonga.miuix.kmp.basic.Button
 import top.yukonga.miuix.kmp.basic.ButtonDefaults
 import top.yukonga.miuix.kmp.basic.Card
@@ -77,44 +96,81 @@ import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
 import top.yukonga.miuix.kmp.icon.extended.Add
 import top.yukonga.miuix.kmp.icon.extended.AddCircle
-import top.yukonga.miuix.kmp.icon.extended.All
 import top.yukonga.miuix.kmp.icon.extended.File
 import top.yukonga.miuix.kmp.icon.extended.GridView
-import top.yukonga.miuix.kmp.icon.extended.Image
 import top.yukonga.miuix.kmp.icon.extended.Settings
 import top.yukonga.miuix.kmp.icon.extended.Theme
 import top.yukonga.miuix.kmp.icon.extended.Weeks
 import top.yukonga.miuix.kmp.preference.ArrowPreference
-import top.yukonga.miuix.kmp.preference.SwitchPreference
 import top.yukonga.miuix.kmp.theme.MiuixTheme
 import top.yukonga.miuix.kmp.window.WindowBottomSheet
-import androidx.lifecycle.lifecycleScope
-import kotlinx.coroutines.launch
-import top.yukonga.miuix.kmp.basic.TextButton
-import java.util.Calendar
 import java.text.SimpleDateFormat
+import java.util.Calendar
 import java.util.Locale
-import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.ExperimentalFoundationApi
-import androidx.compose.foundation.combinedClickable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.ui.platform.LocalViewConfiguration
-import androidx.compose.ui.platform.ViewConfiguration
-import androidx.compose.runtime.CompositionLocalProvider
+import java.io.File
 
-private val homeTabs = listOf(
-    "全部",
-    "饮品",
-    "餐食",
-    "快递"
+private val homeTabs = listOf("全部", "饮品", "餐食", "快递")
+private val navItems = listOf("主页", "设置", "日志")
+private val navIcons = listOf(
+    MiuixIcons.Weeks,
+    MiuixIcons.Settings,
+    MiuixIcons.File
 )
 
+private fun getLogoDirectory(context: android.content.Context): File? {
+    val directory = context.getExternalFilesDir("logos") ?: return null
+    if (!directory.exists()) {
+        directory.mkdirs()
+    }
+    return directory
+}
+
+private fun getLogoFileByLogoName(context: android.content.Context, logoName: String?): File? {
+    if (logoName.isNullOrBlank()) return null
+    val directory = getLogoDirectory(context) ?: return null
+    return directory.listFiles()
+        ?.firstOrNull { file ->
+            file.isFile && file.nameWithoutExtension.equals(logoName, ignoreCase = false)
+        }
+}
+
 class MainActivity : ComponentActivity() {
+    private val requestNotificationPermissionLauncher =
+        registerForActivityResult(RequestPermission()) { }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
         lifecycleScope.launch {
             PaddleOcrHelper.getInstance(applicationContext).initAsync()
+
+            val hasRoot = withContext(Dispatchers.IO) {
+                RootUtils.hasRootAccess()
+            }
+
+            if (hasRoot) {
+                startService(Intent(this@MainActivity, RootCaptureService::class.java))
+            } else {
+                Toast.makeText(
+                    this@MainActivity,
+                    "无 Root 权限",
+                    Toast.LENGTH_LONG
+                ).show()
+            }
+
+            AppSettings.getHamiItems(applicationContext).forEach { item ->
+                IslandNotificationHelper.notifyPickup(applicationContext, item)
+            }
+        }
+
+        if (
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+            ContextCompat.checkSelfPermission(
+                this,
+                Manifest.permission.POST_NOTIFICATIONS
+            ) != PackageManager.PERMISSION_GRANTED
+        ) {
+            requestNotificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
 
         enableEdgeToEdge()
@@ -131,14 +187,10 @@ fun HomeScreen() {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
-    val buttonColors = ButtonDefaults.buttonColors(
-        color = Color(0xFFF2F2F2),
-        contentColor = Color(0xFF222222),
-        disabledColor = Color(0XFF3482FF),
-        disabledContentColor = Color.White
-    )
+
     var text by rememberSaveable { mutableStateOf("") }
     var summary by rememberSaveable { mutableStateOf("") }
+    var logoName by rememberSaveable { mutableStateOf<String?>(null) }
     var ocrLogText by rememberSaveable { mutableStateOf("") }
     var showCreateSheet by rememberSaveable { mutableStateOf(false) }
     var selectedCategory by rememberSaveable { mutableStateOf<String?>(null) }
@@ -151,41 +203,62 @@ fun HomeScreen() {
     }
     var hamiItems by remember { mutableStateOf(AppSettings.getHamiItems(context)) }
 
-    // 当 hamiItems 改变时自动保存
-    LaunchedEffect(hamiItems) {
-        AppSettings.saveHamiItems(context, hamiItems)
+    val buttonColors = ButtonDefaults.buttonColors(
+        color = Color(0xFFF2F2F2),
+        contentColor = Color(0xFF222222),
+        disabledColor = Color(0XFF3482FF),
+        disabledContentColor = Color.White
+    )
+
+    suspend fun decodeBitmapFromUri(uri: Uri) = withContext(Dispatchers.IO) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { decoder, info, _ ->
+                val maxSide = maxOf(info.size.width, info.size.height)
+                if (maxSide > 2048) {
+                    val scale = 2048f / maxSide
+                    decoder.setTargetSize(
+                        (info.size.width * scale).toInt().coerceAtLeast(1),
+                        (info.size.height * scale).toInt().coerceAtLeast(1)
+                    )
+                }
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        }
     }
 
     val pickImageLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.PickVisualMedia()
     ) { uri ->
-        if (uri != null) {
-            scope.launch {
-                try {
-                    val bitmap = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                        ImageDecoder.decodeBitmap(
-                            ImageDecoder.createSource(context.contentResolver, uri)
-                        )
-                    } else {
-                        @Suppress("DEPRECATION")
-                        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
-                    }
+        if (uri == null) return@rememberLauncherForActivityResult
 
+        scope.launch {
+            try {
+                val bitmap = decodeBitmapFromUri(uri)
+                val result = withContext(Dispatchers.IO) {
                     val helper = TextRecognitionHelper(context)
-                    val result = helper.recognizeAll(bitmap)
-                    text = result.code ?: ""
-                    selectedCategory = result.type
-                    summary = result.brand ?: ""
-                    ocrLogText = result.fullText
-
-                    if (!bitmap.isRecycled) {
-                        bitmap.recycle()
-                    }
-                } catch (e: Exception) {
-                    e.printStackTrace()
+                    helper.recognizeAll(bitmap)
                 }
+
+                text = result.code ?: ""
+                selectedCategory = result.type
+                summary = result.brand ?: ""
+                logoName = result.logoName
+                ocrLogText = result.fullText
+
+                if (!bitmap.isRecycled) {
+                    bitmap.recycle()
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
+    }
+
+    LaunchedEffect(hamiItems) {
+        AppSettings.saveHamiItems(context, hamiItems)
     }
 
     BackHandler(enabled = selectedIndex != 0) {
@@ -197,18 +270,43 @@ fun HomeScreen() {
             if (event == Lifecycle.Event.ON_RESUME) {
                 enableFloatingBottomBar = AppSettings.isFloatingBottomBarEnabled(context)
                 enableFloatingBottomBarBlur = AppSettings.isGlassEffectEnabled(context)
+                hamiItems = AppSettings.getHamiItems(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    val navItems = listOf("主页", "设置", "日志")
-    val navIcons = listOf(
-        MiuixIcons.Weeks,
-        MiuixIcons.Settings,
-        MiuixIcons.File
-    )
+    DisposableEffect(context) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(context1: android.content.Context?, intent: Intent?) {
+                if (intent?.action == NotificationActionReceiver.ACTION_ITEMS_CHANGED) {
+                    hamiItems = AppSettings.getHamiItems(context)
+                } else if (intent?.action == AutoCaptureWorkflow.ACTION_CAPTURE_RESULT) {
+                    ocrLogText = intent.getStringExtra(AutoCaptureWorkflow.EXTRA_FULL_TEXT).orEmpty()
+                    if (showCreateSheet) {
+                        text = intent.getStringExtra(AutoCaptureWorkflow.EXTRA_CODE).orEmpty()
+                        selectedCategory = intent.getStringExtra(AutoCaptureWorkflow.EXTRA_CATEGORY)
+                        summary = intent.getStringExtra(AutoCaptureWorkflow.EXTRA_SUMMARY).orEmpty()
+                        logoName = intent.getStringExtra(AutoCaptureWorkflow.EXTRA_LOGO_NAME)
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter().apply {
+            addAction(NotificationActionReceiver.ACTION_ITEMS_CHANGED)
+            addAction(AutoCaptureWorkflow.ACTION_CAPTURE_RESULT)
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(receiver, filter, android.content.Context.RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("DEPRECATION")
+            context.registerReceiver(receiver, filter)
+        }
+        onDispose {
+            context.unregisterReceiver(receiver)
+        }
+    }
 
     fun openAppearanceSettingsPage() {
         context.startActivity(Intent(context, AppearanceSettingsActivity::class.java))
@@ -222,6 +320,26 @@ fun HomeScreen() {
         context.startActivity(Intent(context, AboutActivity::class.java))
     }
 
+    fun resetCreateSheet() {
+        showCreateSheet = false
+        text = ""
+        summary = ""
+        logoName = null
+        selectedCategory = null
+    }
+
+    fun clearCreateSheetFields() {
+        text = ""
+        summary = ""
+        logoName = null
+        selectedCategory = null
+    }
+
+    fun saveItemAndNotify(item: HamiItem) {
+        hamiItems = hamiItems + item
+        IslandNotificationHelper.notifyPickup(context, item)
+    }
+
     val surfaceColor = MiuixTheme.colorScheme.surface
     val backdrop = rememberLayerBackdrop {
         drawRect(surfaceColor)
@@ -231,10 +349,10 @@ fun HomeScreen() {
     Scaffold(
         topBar = {
             TopAppBar(
-                title = if (selectedIndex == 0) {
-                    "Hamix"
-                } else {
-                    "设置"
+                title = when (selectedIndex) {
+                    0 -> "哈米记"
+                    1 -> "设置"
+                    else -> "日志"
                 }
             )
         },
@@ -242,7 +360,10 @@ fun HomeScreen() {
             if (selectedIndex == 0) {
                 FloatingActionButton(
                     modifier = Modifier.padding(end = 32.dp, bottom = 46.dp),
-                    onClick = { showCreateSheet = true },
+                    onClick = {
+                        clearCreateSheetFields()
+                        showCreateSheet = true
+                    },
                     containerColor = Color(0xFF3482FF),
                     minWidth = 56.dp,
                     minHeight = 56.dp
@@ -314,23 +435,27 @@ fun HomeScreen() {
                 when (selectedIndex) {
                     0 -> MainPage(
                         items = hamiItems,
-                        onDone = { item -> hamiItems = hamiItems - item }
+                        onDone = { item ->
+                            hamiItems = hamiItems - item
+                            val notificationManager =
+                                context.getSystemService(NotificationManager::class.java)
+                            notificationManager?.cancel(item.id.toInt())
+                        },
+                        onCardClick = { item ->
+                            IslandNotificationHelper.notifyPickup(context, item)
+                        }
                     )
+
                     1 -> MainSettingsPage(
                         onOpenAppearanceSettings = { openAppearanceSettingsPage() },
                         onOpenFeatureSettings = { openFeatureSettingsPage() },
                         onOpenAboutPage = { openAboutPage() }
                     )
-                    2 -> OcrLogPage(ocrLogText)
+
+                    else -> OcrLogPage(ocrLogText)
                 }
             }
         }
-    }
-    fun resetCreateSheet() {
-        showCreateSheet = false
-        text = ""
-        summary = ""
-        selectedCategory = null
     }
 
     WindowBottomSheet(
@@ -361,29 +486,34 @@ fun HomeScreen() {
                         minHeight = 32.dp
                     ) {
                         Icon(
-                            imageVector = MiuixIcons.Heavy.AddCircle, // 这里换成你真正想要的图标
+                            imageVector = MiuixIcons.Heavy.AddCircle,
                             contentDescription = "操作"
                         )
                     }
                 }
             )
+
             Column {
-                SmallTitle(insideMargin = PaddingValues(3.dp, 8.dp),text = "类别")
+                SmallTitle(
+                    insideMargin = PaddingValues(3.dp, 8.dp),
+                    text = "类别"
+                )
 
                 Row(
-                    modifier = Modifier.padding(horizontal = 0.dp).padding(bottom = 16.dp),
+                    modifier = Modifier
+                        .padding(horizontal = 0.dp)
+                        .padding(bottom = 16.dp),
                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     homeTabs.drop(1).forEach { category ->
                         val isSelected = selectedCategory == category
 
                         Button(
-                            onClick = {
-                                selectedCategory = category
-                            },
+                            onClick = { selectedCategory = category },
                             enabled = !isSelected,
                             colors = buttonColors,
-                            modifier = Modifier.height(36.dp)
+                            modifier = Modifier
+                                .height(36.dp)
                                 .width(58.dp),
                             cornerRadius = 999.dp,
                             insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
@@ -392,6 +522,7 @@ fun HomeScreen() {
                         }
                     }
                 }
+
                 HorizontalDivider(
                     modifier = Modifier.padding(
                         top = 0.dp,
@@ -401,6 +532,7 @@ fun HomeScreen() {
                     )
                 )
             }
+
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
@@ -413,7 +545,6 @@ fun HomeScreen() {
                     Text("取消")
                 }
 
-
                 Button(
                     modifier = Modifier.weight(1f),
                     onClick = {
@@ -422,11 +553,12 @@ fun HomeScreen() {
                             val currentDate = sdf.format(Calendar.getInstance().time)
                             val newItem = HamiItem(
                                 code = text,
-                                category = selectedCategory ?: "其它",
+                                category = selectedCategory ?: "其他",
                                 date = currentDate,
-                                summary = summary
+                                summary = summary,
+                                logoName = logoName
                             )
-                            hamiItems = hamiItems + newItem
+                            saveItemAndNotify(newItem)
                             resetCreateSheet()
                         }
                     },
@@ -435,10 +567,8 @@ fun HomeScreen() {
                     Text("保存")
                 }
             }
-
         }
     }
-
 }
 
 @Composable
@@ -470,7 +600,11 @@ private fun OcrLogPage(logText: String) {
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
+private fun MainPage(
+    items: List<HamiItem>,
+    onDone: (HamiItem) -> Unit,
+    onCardClick: (HamiItem) -> Unit
+) {
     var selectedTabIndex by remember { mutableStateOf(0) }
 
     val filteredItems = if (selectedTabIndex == 0) {
@@ -478,11 +612,13 @@ private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
     } else {
         items.filter { it.category == homeTabs[selectedTabIndex] }
     }
+    val context = LocalContext.current
 
-    Column (
-    ) { Box(
-        modifier = Modifier.fillMaxWidth(0.72f)
-                            .padding(bottom = 22.dp)
+    Column {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth(0.72f)
+                .padding(bottom = 22.dp)
         ) {
             TabRowWithContour(
                 modifier = Modifier.fillMaxWidth(),
@@ -490,6 +626,7 @@ private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
                 maxWidth = 2.dp,
                 selectedTabIndex = selectedTabIndex,
                 onTabSelected = { selectedTabIndex = it },
+                minWidth = 20.dp,
                 colors = TabRowDefaults.tabRowColors(
                     backgroundColor = Color(0xFFE8E8E8),
                     contentColor = Color.Gray,
@@ -498,6 +635,7 @@ private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
                 )
             )
         }
+
         LazyColumn {
             items(
                 items = filteredItems,
@@ -510,54 +648,89 @@ private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
                             get() = 1000L
                     }
                 }
+
                 CompositionLocalProvider(LocalViewConfiguration provides customViewConfiguration) {
                     Card(
                         modifier = Modifier
                             .padding(bottom = 12.dp)
                             .animateItem(),
                         showIndication = true,
-                        insideMargin = PaddingValues(16.dp),
-                        onClick = { /* 可以点击进入详情，暂时留空 */ },
+                        insideMargin = PaddingValues(
+                            start = 16.dp,
+                            top = 8.dp,
+                            end = 16.dp,
+                            bottom = 8.dp
+                        ),
+                        onClick = { onCardClick(item) },
                         onLongPress = { onDone(item) }
                     ) {
-                        Column() {
-                            Text(
-                                text = item.code,
-                                color = MiuixTheme.colorScheme.primary,
-                                fontSize = 20.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                style = MiuixTheme.textStyles.main
-                            )
-                            Spacer(modifier = Modifier.height(8.dp))
-                            Text(
-                                text = item.summary,
-                                style = MiuixTheme.textStyles.body2
-                            )
-                            Spacer(modifier = Modifier.height(16.dp))
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1f)
                             ) {
                                 Text(
-                                    modifier = Modifier
-                                        .padding(top = 8.dp),
+                                    text = item.code,
+                                    color = MiuixTheme.colorScheme.primary,
+                                    fontSize = 20.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    style = MiuixTheme.textStyles.main
+                                )
+                                Spacer(modifier = Modifier.height(8.dp))
+                                Text(
+                                    text = item.summary,
+                                    style = MiuixTheme.textStyles.body2
+                                )
+                                Spacer(modifier = Modifier.height(16.dp))
+                                Text(
+                                    modifier = Modifier.padding(top = 8.dp),
                                     fontWeight = FontWeight.Light,
                                     text = "${item.date}·${item.category}",
                                     fontSize = 12.sp,
                                     style = MiuixTheme.textStyles.subtitle
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
+                            }
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+//                                modifier = Modifier.weight(1f)
+                            ) {
+                                val logoFile = remember(item.logoName) {
+                                    getLogoFileByLogoName(context, item.logoName)
+                                }
+                                val logoBitmap = remember(logoFile?.absolutePath) {
+                                    logoFile?.let { BitmapFactory.decodeFile(it.absolutePath) }
+                                }
+                                if (logoBitmap != null) {
+                                    Image(
+                                        bitmap = logoBitmap.asImageBitmap(),
+                                        contentDescription = item.summary,
+                                        modifier = Modifier
+                                            .size(68.dp)
+                                            .padding(bottom = 2.dp)
+                                            .wrapContentSize(align = Alignment.Center),
+                                        contentScale = ContentScale.Fit
+                                    )
+                                } else {
+                                    Spacer(modifier = Modifier.height(70.dp))
+                                }
                                 Button(
                                     modifier = Modifier
-                                        .width(56.dp)
-                                        .height(32.dp),
-                                    insideMargin = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                                        .width(52.dp)
+                                        .height(28.dp),
+                                    insideMargin = PaddingValues(
+                                        horizontal = 2.dp,
+                                        vertical = 2.dp
+                                    ),
                                     colors = ButtonDefaults.buttonColorsPrimary(),
                                     onClick = { onDone(item) }
                                 ) {
                                     Text(
                                         text = "完成",
-                                        fontSize = 14.sp
+                                        fontSize = 13.sp
                                     )
                                 }
                             }
@@ -568,7 +741,6 @@ private fun MainPage(items: List<HamiItem>, onDone: (HamiItem) -> Unit) {
         }
     }
 }
-
 
 @Composable
 private fun MainSettingsPage(
@@ -598,6 +770,7 @@ private fun MainSettingsPage(
                 onClick = onOpenAppearanceSettings
             )
         }
+
         Surface(
             modifier = Modifier.height(72.dp),
             color = MiuixTheme.colorScheme.background,

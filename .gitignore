@@ -17,8 +17,17 @@ local.properties
 .kotlin/
 .codex_inspect/
 .tmp_*/
+.tmp_*
 _ref_KernelSU/
 _ref_KernelSU_src/
 _ref2_KernelSU/
 _ref_KernelSU.zip
 .tmp_miuix_ui_aar.zip
+.gradle-home-verify/
+app/release/
+app/debug/
+*.jks
+*.apk
+*.aab
+app/release/
+app/debug/

@@ -1,11 +1,9 @@
-package com.zayne.hamix
+﻿package com.zayne.hamix
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.PickVisualMediaRequest
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -24,11 +22,9 @@ import top.yukonga.miuix.kmp.basic.IconButton
 import top.yukonga.miuix.kmp.basic.Scaffold
 import top.yukonga.miuix.kmp.basic.SmallTitle
 import top.yukonga.miuix.kmp.basic.Surface
-import top.yukonga.miuix.kmp.basic.Text
 import top.yukonga.miuix.kmp.basic.TextField
 import top.yukonga.miuix.kmp.basic.TopAppBar
 import top.yukonga.miuix.kmp.icon.MiuixIcons
-import top.yukonga.miuix.kmp.icon.extended.AddCircle
 import top.yukonga.miuix.kmp.icon.extended.Hide
 import top.yukonga.miuix.kmp.icon.extended.Show
 import top.yukonga.miuix.kmp.preference.OverlayDropdownPreference
@@ -49,10 +45,10 @@ class FeatureSettingsActivity : ComponentActivity() {
 @Composable
 fun FeatureSettingsPage(onBack: () -> Unit) {
     var selectedIndex by remember { mutableStateOf(0) }
-    val options = listOf("本地OCR识别", "AI识别")
     var text by remember { mutableStateOf("") }
     var isHidden by remember { mutableStateOf(true) }
 
+    val options = listOf("本地OCR识别", "AI识别")
 
     Scaffold(
         topBar = { TopAppBar(title = "功能设置") }
@@ -75,20 +71,18 @@ fun FeatureSettingsPage(onBack: () -> Unit) {
                     onSelectedIndexChange = { selectedIndex = it }
                 )
             }
+
             if (selectedIndex == 1) {
-                Column() {
-                    SmallTitle(
-                        text = "API地址"
-                    )
+                Column {
+                    SmallTitle(text = "API地址")
                     TextField(
                         value = text,
                         onValueChange = { text = it },
                         label = "请输入链接",
                         useLabelAsPlaceholder = true
                     )
-                    SmallTitle(
-                        text = "API密钥"
-                    )
+
+                    SmallTitle(text = "API密钥")
                     TextField(
                         value = text,
                         onValueChange = { text = it },
@@ -97,9 +91,7 @@ fun FeatureSettingsPage(onBack: () -> Unit) {
                         trailingIcon = {
                             IconButton(
                                 modifier = Modifier.padding(end = 12.dp),
-                                onClick = {
-                                    isHidden = !isHidden
-                                },
+                                onClick = { isHidden = !isHidden },
                                 backgroundColor = Color.Transparent,
                                 minWidth = 32.dp,
                                 minHeight = 32.dp
