@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.os.IBinder
 import android.util.Log
@@ -16,8 +17,8 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlin.math.max
 
 class RootCaptureService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
@@ -100,7 +101,6 @@ class RootCaptureService : Service() {
         val normalized = line.uppercase()
         if (!volumeDownPressPattern.containsMatchIn(normalized)) return
         val now = System.currentTimeMillis()
-        val result = now - lastVolumeDownTimestamp
         if (now - lastVolumeDownTimestamp <= DOUBLE_PRESS_INTERVAL_MS) {
             lastVolumeDownTimestamp = 0L
             triggerCapture()
@@ -113,31 +113,38 @@ class RootCaptureService : Service() {
         if (!processing.compareAndSet(false, true)) return
 
         serviceScope.launch {
-            val screenshotFile = File(cacheDir, "root_capture.png")
             try {
+                IslandNotificationHelper.notifyProcessingStarted(applicationContext, 0)
                 startFakeProgressUpdates()
 
-                val captureCommand = "/system/bin/screencap -p ${screenshotFile.absolutePath}"
-                val process = ProcessBuilder("su", "-c", captureCommand)
-                    .redirectErrorStream(true)
-                    .start()
-                val exitCode = process.waitFor()
-                if (exitCode != 0 || !screenshotFile.exists()) {
-                    Log.e(TAG, "截屏失败: exitCode=$exitCode")
+                val screenshotBytes = captureScreenshotPng()
+                if (screenshotBytes == null) {
+                    Log.e(TAG, "截图失败: empty bytes")
                     return@launch
                 }
 
-                val bitmap = BitmapFactory.decodeFile(screenshotFile.absolutePath)
+                val bitmap = decodeOptimizedScreenshot(screenshotBytes)
                 if (bitmap == null) {
                     Log.e(TAG, "截图解码失败")
                     return@launch
                 }
 
                 try {
-                    val saveResult = AutoCaptureWorkflow.processBitmapAndSave(applicationContext, bitmap)
-                    saveResult.savedItem?.let { savedItem ->
-                        IslandNotificationHelper.notifyPickup(applicationContext, savedItem)
+                    val recognitionResult = AutoCaptureWorkflow.recognizeBitmap(applicationContext, bitmap)
+                    finishProcessingNotification()
+
+                    val savedItem = AutoCaptureWorkflow.persistRecognitionResult(
+                        applicationContext,
+                        recognitionResult
+                    )
+                    savedItem?.let {
+                        IslandNotificationHelper.notifyPickup(applicationContext, it)
                     }
+                    AutoCaptureWorkflow.broadcastRecognitionResult(
+                        applicationContext,
+                        recognitionResult,
+                        savedItem != null
+                    )
                 } finally {
                     if (!bitmap.isRecycled) {
                         bitmap.recycle()
@@ -146,19 +153,73 @@ class RootCaptureService : Service() {
             } catch (e: Exception) {
                 Log.e(TAG, "自动截屏识别失败: ${e.message}", e)
             } finally {
-                progressJob?.cancel()
-                progressJob = null
-                IslandNotificationHelper.cancelProcessingNotification(applicationContext)
-                screenshotFile.delete()
-                processing.set(false)
+                finishProcessingNotification()
             }
         }
+    }
+
+    private fun captureScreenshotPng(): ByteArray? {
+        val process = ProcessBuilder("su", "-c", "/system/bin/screencap -p")
+            .redirectErrorStream(true)
+            .start()
+
+        val bytes = process.inputStream.use { it.readBytes() }
+        val exitCode = process.waitFor()
+        return if (exitCode == 0 && bytes.isNotEmpty()) {
+            bytes
+        } else {
+            null
+        }
+    }
+
+    private fun decodeOptimizedScreenshot(bytes: ByteArray): Bitmap? {
+        val boundsOptions = BitmapFactory.Options().apply {
+            inJustDecodeBounds = true
+        }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, boundsOptions)
+
+        val maxSide = max(boundsOptions.outWidth, boundsOptions.outHeight)
+        val sampleSize = if (maxSide <= MAX_OCR_SIDE) {
+            1
+        } else {
+            Integer.highestOneBit((maxSide / MAX_OCR_SIDE).coerceAtLeast(1))
+        }
+
+        val decodeOptions = BitmapFactory.Options().apply {
+            inSampleSize = sampleSize
+            inPreferredConfig = Bitmap.Config.ARGB_8888
+        }
+
+        val decoded = BitmapFactory.decodeByteArray(bytes, 0, bytes.size, decodeOptions) ?: return null
+        val decodedMaxSide = max(decoded.width, decoded.height)
+        if (decodedMaxSide <= MAX_OCR_SIDE) {
+            return decoded
+        }
+
+        val scale = MAX_OCR_SIDE.toFloat() / decodedMaxSide
+        val scaled = Bitmap.createScaledBitmap(
+            decoded,
+            (decoded.width * scale).toInt().coerceAtLeast(1),
+            (decoded.height * scale).toInt().coerceAtLeast(1),
+            true
+        )
+        if (scaled !== decoded) {
+            decoded.recycle()
+        }
+        return scaled
+    }
+
+    private fun finishProcessingNotification() {
+        progressJob?.cancel()
+        progressJob = null
+        processing.set(false)
+        IslandNotificationHelper.cancelProcessingNotification(applicationContext)
     }
 
     private fun startFakeProgressUpdates() {
         progressJob?.cancel()
         progressJob = serviceScope.launch {
-            val progressSteps = listOf(8, 17, 29, 41, 54, 68, 79, 88, 93)
+            val progressSteps = listOf(1, 3, 6, 10, 15, 22, 31, 43, 57, 70, 82, 90, 95)
             var index = 0
             while (processing.get()) {
                 IslandNotificationHelper.notifyProcessingStarted(
@@ -168,7 +229,7 @@ class RootCaptureService : Service() {
                 if (index < progressSteps.lastIndex) {
                     index++
                 }
-                delay(250)
+                delay(140)
             }
         }
     }
@@ -178,5 +239,6 @@ class RootCaptureService : Service() {
         private const val CHANNEL_ID = "root_capture_service"
         private const val NOTIFICATION_ID = 2001
         private const val DOUBLE_PRESS_INTERVAL_MS = 400L
+        private const val MAX_OCR_SIDE = 1600
     }
 }

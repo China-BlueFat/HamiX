@@ -21,28 +21,37 @@ object AutoCaptureWorkflow {
     const val EXTRA_FULL_TEXT = "extra_full_text"
     const val EXTRA_SAVED = "extra_saved"
 
-    suspend fun processBitmapAndSave(context: Context, bitmap: Bitmap): AutoCaptureSaveResult {
+    suspend fun recognizeBitmap(context: Context, bitmap: Bitmap): RecognitionResult {
         val helper = TextRecognitionHelper(context)
-        val result = helper.recognizeAll(bitmap)
+        return helper.recognizeAll(bitmap)
+    }
 
+    fun persistRecognitionResult(
+        context: Context,
+        result: RecognitionResult
+    ): HamiItem? {
         val code = result.code?.trim().orEmpty()
-        val savedItem = if (code.isNotBlank()) {
-            val sdf = SimpleDateFormat("M月d日", Locale.getDefault())
-            val currentDate = sdf.format(Calendar.getInstance().time)
-            val newItem = HamiItem(
-                code = code,
-                category = result.type.ifBlank { "其他" },
-                date = currentDate,
-                summary = result.brand ?: "",
-                logoName = result.logoName
-            )
-            val currentItems = AppSettings.getHamiItems(context)
-            AppSettings.saveHamiItems(context, currentItems + newItem)
-            newItem
-        } else {
-            null
-        }
+        if (code.isBlank()) return null
 
+        val sdf = SimpleDateFormat("M月d日", Locale.getDefault())
+        val currentDate = sdf.format(Calendar.getInstance().time)
+        val newItem = HamiItem(
+            code = code,
+            category = result.type.ifBlank { "其他" },
+            date = currentDate,
+            summary = result.brand ?: "",
+            logoName = result.logoName
+        )
+        val currentItems = AppSettings.getHamiItems(context)
+        AppSettings.saveHamiItems(context, currentItems + newItem)
+        return newItem
+    }
+
+    fun broadcastRecognitionResult(
+        context: Context,
+        result: RecognitionResult,
+        saved: Boolean
+    ) {
         context.sendBroadcast(
             Intent(NotificationActionReceiver.ACTION_ITEMS_CHANGED).apply {
                 setPackage(context.packageName)
@@ -57,13 +66,25 @@ object AutoCaptureWorkflow {
                 putExtra(EXTRA_SUMMARY, result.brand ?: "")
                 putExtra(EXTRA_LOGO_NAME, result.logoName)
                 putExtra(EXTRA_FULL_TEXT, result.fullText)
-                putExtra(EXTRA_SAVED, savedItem != null)
+                putExtra(EXTRA_SAVED, saved)
             }
         )
+    }
 
+    fun saveRecognitionResult(
+        context: Context,
+        result: RecognitionResult
+    ): AutoCaptureSaveResult {
+        val savedItem = persistRecognitionResult(context, result)
+        broadcastRecognitionResult(context, result, savedItem != null)
         return AutoCaptureSaveResult(
             recognitionResult = result,
             savedItem = savedItem
         )
+    }
+
+    suspend fun processBitmapAndSave(context: Context, bitmap: Bitmap): AutoCaptureSaveResult {
+        val result = recognizeBitmap(context, bitmap)
+        return saveRecognitionResult(context, result)
     }
 }

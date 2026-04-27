@@ -85,6 +85,10 @@ object IslandNotificationHelper {
         notificationManager.notify(PROCESSING_NOTIFICATION_ID, builder.build())
     }
 
+    fun notifyProcessingPreparing(context: Context) {
+        notifyProcessingStarted(context, 0)
+    }
+
     fun cancelProcessingNotification(context: Context) {
         val notificationManager =
             context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
@@ -179,6 +183,19 @@ object IslandNotificationHelper {
         return Bundle().apply {
             putBundle("miui.focus.pics", pics)
             putString("miui.focus.param", buildProcessingIslandParams(progress))
+        }
+    }
+
+    private fun buildProcessingPreparingIslandExtras(appIcon: Icon): Bundle {
+        val pics = Bundle().apply {
+            putParcelable(PIC_LOGO_KEY, appIcon)
+            putParcelable(PIC_TICKER_KEY, appIcon)
+            putParcelable(PIC_AOD_KEY, appIcon)
+        }
+
+        return Bundle().apply {
+            putBundle("miui.focus.pics", pics)
+            putString("miui.focus.param", buildProcessingPreparingIslandParams())
         }
     }
 
@@ -289,6 +306,52 @@ object IslandNotificationHelper {
                         })
                         put("textInfo", JSONObject().apply {
                             put("title", "正在识别")
+                        })
+                    })
+                    put("smallIslandArea", JSONObject().apply {
+                        put("picInfo", JSONObject().apply {
+                            put("type", 1)
+                            put("pic", PIC_LOGO_KEY)
+                        })
+                    })
+                })
+            })
+        }.toString()
+    }
+
+    private fun buildProcessingPreparingIslandParams(): String {
+        return JSONObject().apply {
+            put("param_v2", JSONObject().apply {
+                put("protocol", 1)
+                put("business", "pickup")
+                put("updatable", true)
+                put("ticker", "开始识别")
+                put("islandFirstFloat", true)
+                put("enableFloat", false)
+                put("tickerPic", PIC_TICKER_KEY)
+                put("aodTitle", "开始识别")
+                put("aodPic", PIC_AOD_KEY)
+                put("baseInfo", JSONObject().apply {
+                    put("title", "开始识别")
+                    put("colorTitle", "#3482FF")
+                    put("type", 1)
+                })
+                put("picInfo", JSONObject().apply {
+                    put("type", 1)
+                    put("pic", PIC_LOGO_KEY)
+                })
+                put("param_island", JSONObject().apply {
+                    put("islandProperty", 1)
+                    put("bigIslandArea", JSONObject().apply {
+                        put("imageTextInfoLeft", JSONObject().apply {
+                            put("type", 1)
+                            put("picInfo", JSONObject().apply {
+                                put("type", 1)
+                                put("pic", PIC_LOGO_KEY)
+                            })
+                        })
+                        put("textInfo", JSONObject().apply {
+                            put("title", "开始识别")
                         })
                     })
                     put("smallIslandArea", JSONObject().apply {
