@@ -1,4 +1,4 @@
-﻿package com.zayne.hamix
+package com.zayne.hamix
 
 import android.Manifest
 import android.content.BroadcastReceiver
@@ -251,8 +251,7 @@ fun HomeScreen() {
                 if (!bitmap.isRecycled) {
                     bitmap.recycle()
                 }
-            } catch (e: Exception) {
-                e.printStackTrace()
+            } catch (_: Exception) {
             }
         }
     }
@@ -696,7 +695,7 @@ private fun MainPage(
                             }
                             Column(
                                 horizontalAlignment = Alignment.CenterHorizontally,
-//                                modifier = Modifier.weight(1f)
+
                             ) {
                                 val logoFile = remember(item.logoName) {
                                     getLogoFileByLogoName(context, item.logoName)

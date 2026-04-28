@@ -1,7 +1,23 @@
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.compose.compiler)
 }
+
+val defaultBuildDate = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
+val buildCount = providers.gradleProperty("BUILD_COUNT").orNull
+    ?: System.getenv("BUILD_COUNT")
+    ?: "01"
+val buildStamp = providers.gradleProperty("BUILD_STAMP").orNull
+    ?: System.getenv("BUILD_STAMP")
+    ?: "$defaultBuildDate$buildCount"
+val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: "hamix-release.jks"
+val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "960412"
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "HamiX"
+val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: "960412"
 
 android {
     namespace = "com.zayne.hamix"
@@ -20,17 +36,6 @@ android {
         ndk {
             abiFilters += "arm64-v8a"
         }
-
-    }
-
-    buildTypes {
-        release {
-            isMinifyEnabled = false
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
     }
 
     buildFeatures {
@@ -43,10 +48,10 @@ android {
     }
     signingConfigs {
         create("release") {
-            storeFile = file("hamix-release.jks")
-            storePassword = "960412"
-            keyAlias = "HamiX"
-            keyPassword = "960412"
+            storeFile = file(releaseKeystorePath)
+            storePassword = releaseStorePassword
+            keyAlias = releaseKeyAlias
+            keyPassword = releaseKeyPassword
         }
     }
 
@@ -62,13 +67,20 @@ android {
     }
 }
 
+androidComponents {
+    onVariants(selector().all()) { variant ->
+        variant.outputs.forEach { output ->
+            val buildTypeName = variant.buildType.replaceFirstChar { it.uppercase() }
+            output.outputFileName.set("HamiX-$buildStamp-$buildTypeName.apk")
+        }
+    }
+}
+
 dependencies {
     implementation(libs.androidx.core.ktx)
-    implementation(libs.androidx.appcompat)
+    implementation(libs.androidx.activity)
     implementation(libs.androidx.foundation)
     implementation(libs.material)
-    implementation(libs.androidx.constraintlayout)
-    implementation("androidx.activity:activity-compose:1.13.0")
     implementation("com.github.equationl.paddleocr4android:ncnnandroidppocr:v1.3.0")
     implementation("com.google.mlkit:barcode-scanning:17.3.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-play-services:1.8.1")
@@ -81,7 +93,6 @@ dependencies {
     implementation("top.yukonga.miuix.kmp:miuix-navigation3-ui-android:0.9.0")
 
     implementation("io.github.kyant0:backdrop:1.0.6")
-    implementation("com.qmdeve.liquidglass:core:1.0.3")
 
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)

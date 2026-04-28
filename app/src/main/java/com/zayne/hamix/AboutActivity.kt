@@ -1,4 +1,4 @@
-﻿package com.zayne.hamix
+package com.zayne.hamix
 
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -126,14 +126,7 @@ fun AboutPage(onBack: () -> Unit) {
                         title = "在 GitHub 查看源码",
                         onClick = { openUrl("https://github.com/China-BlueFat/HamiX") }
                     )
-//                    ArrowPreference(
-//                        title = "加入我的 Telegram 频道",
-//                        onClick = { openUrl("https://t.me/your-channel") }
-//                    )
-//                    ArrowPreference(
-//                        title = "加入我的 QQ 频道",
-//                        onClick = { openUrl("https://qm.qq.com/your-channel") }
-//                    )
+
                 }
             }
         }

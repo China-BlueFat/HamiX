@@ -1,0 +1,75 @@
+name: Android Build And Release
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Prepare signing keystore
+        shell: bash
+        run: |
+          if [ -n "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" ]; then
+            echo "${{ secrets.ANDROID_KEYSTORE_BASE64 }}" | base64 -d > app/hamix-release.jks
+          fi
+
+      - name: Compute build metadata
+        id: meta
+        shell: bash
+        run: |
+          BUILD_DATE=$(date +'%Y%m%d')
+          BUILD_COUNT=$(printf '%02d' "${GITHUB_RUN_NUMBER}")
+          BUILD_STAMP="${BUILD_DATE}${BUILD_COUNT}"
+          echo "build_date=${BUILD_DATE}" >> "$GITHUB_OUTPUT"
+          echo "build_count=${BUILD_COUNT}" >> "$GITHUB_OUTPUT"
+          echo "build_stamp=${BUILD_STAMP}" >> "$GITHUB_OUTPUT"
+          echo "release_tag=build-${BUILD_STAMP}" >> "$GITHUB_OUTPUT"
+
+      - name: Grant gradlew execute permission
+        run: chmod +x gradlew
+
+      - name: Build Debug APK
+        env:
+          BUILD_COUNT: ${{ steps.meta.outputs.build_count }}
+          BUILD_STAMP: ${{ steps.meta.outputs.build_stamp }}
+          ANDROID_KEYSTORE_PATH: app/hamix-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleDebug --no-configuration-cache
+
+      - name: Build Release APK
+        env:
+          BUILD_COUNT: ${{ steps.meta.outputs.build_count }}
+          BUILD_STAMP: ${{ steps.meta.outputs.build_stamp }}
+          ANDROID_KEYSTORE_PATH: app/hamix-release.jks
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: ./gradlew assembleRelease --no-configuration-cache
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.release_tag }}
+          name: HamiX ${{ steps.meta.outputs.build_stamp }}
+          prerelease: false
+          files: |
+            app/build/outputs/apk/debug/*.apk
+            app/build/outputs/apk/release/*.apk

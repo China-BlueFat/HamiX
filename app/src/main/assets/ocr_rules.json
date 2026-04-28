@@ -2,25 +2,27 @@
   {
     "brand": "蜜雪冰城",
     "category": "饮品",
-    "matchBrand": "蜜雪冰城",
+    "brandRegex": "蜜雪冰城|蜜雪",
     "logoName": "MIXUE",
-    "extractType": "regex",
-    "extractRegex": "凭取餐码自提：[\\s\\n\\r]*?(\\d+)"
+    "codeRegex": "凭取餐码自提：[\\s\\n\\r]*?(\\d+)",
+    "locationRegex": "城|街|食堂|楼|广场|路|巷"
   },
   {
     "brand": "瑞幸咖啡",
     "category": "饮品",
-    "matchBrand": "瑞幸咖啡",
+    "brandRegex": ["瑞幸咖啡","瑞幸"],
     "logoName": "Luckin Coffee",
-    "extractType": "regex",
-    "extractRegex": "(?:商品名称|取餐码)：[\\s\\n\\r]*?(\\d+)"
+    "codeRegex": "(?:商品名称|取餐码)：[\\s\\n\\r]*?(\\d+)",
+    "matchText": "取茶号",
+    "locationRegex": "城|街|食堂|楼|广场|路|巷"
   },
   {
     "brand": "古茗",
     "category": "餐食",
-    "matchBrand": "古花",
+    "brandRegex": "古花",
     "logoName": "GoodMe",
-    "extractType": "previous_line",
-    "matchText": "取茶号"
+    "codeRegex": "previous_line",
+    "matchText": "取茶号",
+    "locationRegex": "城|街|食堂|楼|广场|路|巷"
   }
 ]
