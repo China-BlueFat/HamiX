@@ -14,6 +14,8 @@
 .cxx
 local.properties
 .gradle-home/
+.gradle-user/
+.gradle-user2/
 .kotlin/
 .codex_inspect/
 .tmp_*/
