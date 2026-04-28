@@ -1,3 +1,4 @@
+哈米记 · HamiX
 适配小米全系 Root 设备｜本地 OCR 识别｜取件 / 取餐码记录｜HyperOS 胶囊上岛
 📖 项目介绍
 哈米记（HamiX），专为 Root 后的小米 / HyperOS 设备打造的便民码单记录工具。
