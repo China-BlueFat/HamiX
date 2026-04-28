@@ -48,7 +48,7 @@ jobs:
         env:
           BUILD_COUNT: ${{ steps.meta.outputs.build_count }}
           BUILD_STAMP: ${{ steps.meta.outputs.build_stamp }}
-          ANDROID_KEYSTORE_PATH: app/hamix-release.jks
+          ANDROID_KEYSTORE_PATH: hamix-release.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
@@ -58,7 +58,7 @@ jobs:
         env:
           BUILD_COUNT: ${{ steps.meta.outputs.build_count }}
           BUILD_STAMP: ${{ steps.meta.outputs.build_stamp }}
-          ANDROID_KEYSTORE_PATH: app/hamix-release.jks
+          ANDROID_KEYSTORE_PATH: hamix-release.jks
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
