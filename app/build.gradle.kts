@@ -65,13 +65,12 @@ android {
             )
         }
     }
-}
 
-androidComponents {
-    onVariants(selector().all()) { variant ->
-        variant.outputs.forEach { output ->
-            val buildTypeName = variant.buildType.replaceFirstChar { it.uppercase() }
-            output.outputFileName.set("HamiX-$buildStamp-$buildTypeName.apk")
+    applicationVariants.all {
+        outputs.all {
+            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
+            val buildTypeName = buildType.replaceFirstChar { it.uppercase() }
+            output.outputFileName = "HamiX-$buildStamp-$buildTypeName.apk"
         }
     }
 }
