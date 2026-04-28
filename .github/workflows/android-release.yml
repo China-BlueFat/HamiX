@@ -52,7 +52,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleDebug --no-configuration-cache
+        run: ./gradlew renameDebugApk --no-configuration-cache
 
       - name: Build Release APK
         env:
@@ -62,7 +62,7 @@ jobs:
           ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
           ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
-        run: ./gradlew assembleRelease --no-configuration-cache
+        run: ./gradlew renameReleaseApk --no-configuration-cache
 
       - name: Publish GitHub Release
         uses: softprops/action-gh-release@v2
@@ -71,5 +71,5 @@ jobs:
           name: HamiX ${{ steps.meta.outputs.build_stamp }}
           prerelease: false
           files: |
-            app/build/outputs/apk/debug/*.apk
-            app/build/outputs/apk/release/*.apk
+            app/build/outputs/renamed/debug/*.apk
+            app/build/outputs/renamed/release/*.apk

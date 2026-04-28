@@ -65,14 +65,6 @@ android {
             )
         }
     }
-
-    applicationVariants.all {
-        outputs.all {
-            val output = this as com.android.build.gradle.internal.api.BaseVariantOutputImpl
-            val buildTypeName = buildType.replaceFirstChar { it.uppercase() }
-            output.outputFileName = "HamiX-$buildStamp-$buildTypeName.apk"
-        }
-    }
 }
 
 dependencies {
@@ -96,4 +88,20 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+}
+
+tasks.register<Copy>("renameDebugApk") {
+    dependsOn("assembleDebug")
+    from(layout.buildDirectory.dir("outputs/apk/debug"))
+    include("*.apk")
+    into(layout.buildDirectory.dir("outputs/renamed/debug"))
+    rename { "HamiX-$buildStamp-Debug.apk" }
+}
+
+tasks.register<Copy>("renameReleaseApk") {
+    dependsOn("assembleRelease")
+    from(layout.buildDirectory.dir("outputs/apk/release"))
+    include("*.apk")
+    into(layout.buildDirectory.dir("outputs/renamed/release"))
+    rename { "HamiX-$buildStamp-Release.apk" }
 }
