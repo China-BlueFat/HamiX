@@ -16,7 +16,7 @@ val buildStamp = providers.gradleProperty("BUILD_STAMP").orNull
     ?: "$defaultBuildDate$buildCount"
 val releaseKeystorePath = System.getenv("ANDROID_KEYSTORE_PATH") ?: "hamix-release.jks"
 val releaseStorePassword = System.getenv("ANDROID_KEYSTORE_PASSWORD") ?: "960412"
-val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "HamiX"
+val releaseKeyAlias = System.getenv("ANDROID_KEY_ALIAS") ?: "hamix"
 val releaseKeyPassword = System.getenv("ANDROID_KEY_PASSWORD") ?: "960412"
 
 android {
